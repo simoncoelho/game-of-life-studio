@@ -1,19 +1,28 @@
 # Game of Life Studio
 
-This project is now centered on a React + TypeScript studio app in [web](C:/Users/Simon/source/conway-game-of-life/web) for building, previewing, and exporting cellular automata motion pieces.
+Game of Life Studio is a React + TypeScript app for composing, previewing, and exporting stylized cellular automata scenes as GIFs.
 
-## Web App
+## Repo Layout
 
-The rebuilt UI uses:
+```text
+.
+|-- README.md
+|-- docs/
+|   `-- frontend-architecture.md
+`-- web/
+    |-- README.md
+    |-- package.json
+    |-- public/
+    `-- src/
+        |-- App.tsx
+        |-- main.tsx
+        |-- index.css
+        |-- components/ui/
+        |-- lib/
+        `-- features/studio/
+```
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- Radix UI primitives in a shadcn-style component layer
-- `gifenc` for browser-side GIF export
-
-## Run
+## Getting Started
 
 ```powershell
 cd web
@@ -21,17 +30,28 @@ npm install
 npm run dev
 ```
 
-## Build
+## Useful Commands
 
 ```powershell
 cd web
+npm run lint
 npm run build
+npm run preview
 ```
 
-## Current Studio Flow
+## Where To Look First
 
-- `Scene Setup` for presets, rule tuning, color styling, seed text, and additive scene composition
-- `Preview / View` for capturing a timeline and scrubbing or playing it forward and backward
-- `Export` for writing the approved preview to GIF with optional seed-text overlay
+- `web/README.md`: day-to-day frontend workspace guide
+- `docs/frontend-architecture.md`: module-level architecture and responsibilities
+- `web/src/features/studio/GameOfLifeStudioApp.tsx`: main studio screen and interaction wiring
 
-The legacy Python prototype still exists at the repo root as a reference, but the active app is the React rebuild in `web/`.
+## What Lives Where
+
+- `web/src/features/studio/constants/`: defaults, presets, and glyph data
+- `web/src/features/studio/lib/`: simulation, rendering, export, and styling helpers
+- `web/src/features/studio/components/`: small reusable studio-only UI primitives
+- `web/src/components/ui/`: shared Radix/shadcn-style UI building blocks
+
+## Project Structure
+
+The application lives in `web/`, with supporting documentation in `docs/`.

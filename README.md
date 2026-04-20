@@ -41,17 +41,6 @@ npm run build
 npm run preview
 ```
 
-## GitHub Pages
-
-This repo is now set up to publish the React app in `web/` to GitHub Pages through GitHub Actions.
-
-1. Push the repository to GitHub.
-2. In GitHub, open `Settings > Pages`.
-3. Set `Source` to `GitHub Actions`.
-4. Push to `main` or `master`, or run the `Deploy GitHub Pages` workflow manually.
-
-The Vite base path is detected automatically from the GitHub repository name in Actions, so the site will load correctly from `https://<your-user>.github.io/<repo-name>/`.
-
 ## Where To Look First
 
 - `web/README.md`: day-to-day frontend workspace guide

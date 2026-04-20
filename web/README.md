@@ -12,6 +12,8 @@ npm run build
 npm run preview
 ```
 
+For GitHub Pages deployments, the build automatically uses the repository name as the base path when it runs inside GitHub Actions. You can override that locally in PowerShell with `$env:VITE_BASE_PATH="/custom-base/"; npm run build`.
+
 ## Source Layout
 
 ```text

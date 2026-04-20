@@ -8,3 +8,12 @@ export function toolButtonClass(active: boolean) {
       : "border-border bg-card/70 text-muted-foreground hover:border-primary/30 hover:text-foreground",
   )
 }
+
+export function panelTabClass(active: boolean) {
+  return cn(
+    "flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+    active
+      ? "bg-accent text-foreground shadow-sm shadow-black/20"
+      : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+  )
+}

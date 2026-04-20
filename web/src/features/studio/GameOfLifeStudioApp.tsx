@@ -4,9 +4,7 @@ import {
   Captions,
   ChevronLeft,
   ChevronRight,
-  Circle,
   Download,
-  Grid3X3,
   Minus,
   Move,
   Pause,
@@ -24,7 +22,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   CompactColorField,
@@ -73,7 +70,7 @@ function GameOfLifeStudioApp() {
       : createSceneSeedGrid(DEFAULT_ROWS, DEFAULT_COLS, defaultScene.seedMode, defaultScene.density)
 
   const [workflowTab, setWorkflowTab] = useState<"scene" | "review">("scene")
-  const [sceneTab, setSceneTab] = useState("scene")
+  const [sceneTab, setSceneTab] = useState<"scene" | "colors">("scene")
 
   const [sceneKey, setSceneKey] = useState(defaultScene.key)
   const [paletteKey, setPaletteKey] = useState(defaultPalette.key)
@@ -856,7 +853,6 @@ function GameOfLifeStudioApp() {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="relative h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.14),_transparent_28%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.1),_transparent_22%),linear-gradient(180deg,_#05070b,_#0a0f17_48%,_#05070b)] text-foreground">
-        <Tabs value={workflowTab} onValueChange={(value) => setWorkflowTab(value as "scene" | "review")}>
           <div className="pointer-events-none absolute inset-0">
             <div className="pointer-events-auto absolute left-4 top-4 z-20 flex max-w-[calc(100vw-2rem)] flex-col md:left-6 md:top-6">
               <div className="rounded-2xl border border-border/70 bg-card/78 px-4 py-3 shadow-2xl backdrop-blur-2xl">
@@ -891,23 +887,61 @@ function GameOfLifeStudioApp() {
 
             <Card className="pointer-events-auto absolute bottom-6 left-4 top-28 z-10 hidden w-[22.5rem] max-w-[calc(100vw-2rem)] flex-col border-border/70 bg-card/78 shadow-2xl backdrop-blur-2xl lg:flex lg:left-6">
               <CardContent className="flex h-full flex-col overflow-y-auto p-4">
-                <div className="sticky top-0 z-20 mb-4 overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-lg backdrop-blur-xl">
-                  <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 rounded-none border-0 bg-transparent p-1.5">
-                    <TabsTrigger value="scene" className="gap-2"><Grid3X3 className="size-4" />Scene Setup</TabsTrigger>
-                    <TabsTrigger value="review" className="gap-2"><Play className="size-4" />Preview / Export</TabsTrigger>
-                  </TabsList>
+                <div className="sticky top-0 z-20 mb-4 rounded-2xl border border-border/70 bg-card/95 shadow-lg backdrop-blur-xl">
+                  <div className="grid w-full grid-cols-2 gap-1 p-1">
+                    <button
+                      type="button"
+                      className={
+                        workflowTab === "scene"
+                          ? "min-h-8 rounded-lg bg-primary px-2.5 py-2 text-center text-xs font-semibold leading-none text-primary-foreground shadow-sm"
+                          : "min-h-8 rounded-lg px-2.5 py-2 text-center text-xs font-medium leading-none text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                      }
+                      onClick={() => setWorkflowTab("scene")}
+                    >
+                      Scene Setup
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        workflowTab === "review"
+                          ? "min-h-8 rounded-lg bg-primary px-2.5 py-2 text-center text-xs font-semibold leading-none text-primary-foreground shadow-sm"
+                          : "min-h-8 rounded-lg px-2.5 py-2 text-center text-xs font-medium leading-none text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                      }
+                      onClick={() => setWorkflowTab("review")}
+                    >
+                      Preview / Export
+                    </button>
+                  </div>
                   {workflowTab === "scene" ? (
-                    <Tabs value={sceneTab} onValueChange={setSceneTab}>
-                      <TabsList className="grid w-full shrink-0 grid-cols-2 rounded-none border-0 border-t border-border/70 bg-transparent p-1.5 pt-0">
-                        <TabsTrigger value="scene" className="gap-2"><Circle className="size-4" />Scene</TabsTrigger>
-                        <TabsTrigger value="colors" className="gap-2"><Sparkles className="size-4" />Colors</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
+                    <div className="grid w-full grid-cols-2 gap-1 border-t border-border/70 p-1 pt-0.5">
+                      <button
+                        type="button"
+                        className={
+                          sceneTab === "scene"
+                            ? "min-h-8 rounded-lg bg-secondary px-2.5 py-2 text-center text-xs font-semibold leading-none text-secondary-foreground"
+                            : "min-h-8 rounded-lg px-2.5 py-2 text-center text-xs font-medium leading-none text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                        }
+                        onClick={() => setSceneTab("scene")}
+                      >
+                        Scene
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          sceneTab === "colors"
+                            ? "min-h-8 rounded-lg bg-secondary px-2.5 py-2 text-center text-xs font-semibold leading-none text-secondary-foreground"
+                            : "min-h-8 rounded-lg px-2.5 py-2 text-center text-xs font-medium leading-none text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                        }
+                        onClick={() => setSceneTab("colors")}
+                      >
+                        Colors
+                      </button>
+                    </div>
                   ) : null}
                 </div>
                 {workflowTab === "scene" ? (
-                  <Tabs value={sceneTab} onValueChange={setSceneTab}>
-                    <TabsContent value="scene" className="space-y-4">
+                  sceneTab === "scene" ? (
+                    <div className="space-y-4">
                       <div className="space-y-3 rounded-[24px] border border-border/70 bg-panel/85 p-3.5">
                         <Field label="Base scene">
                           <Select value={sceneKey} onValueChange={applyScenePreset}>
@@ -949,9 +983,9 @@ function GameOfLifeStudioApp() {
                         <SliderField label="Speed" value={speed} min={2} max={20} step={1} onChange={(value) => { setSpeed(value); invalidatePreview() }} format={(value) => `${value.toFixed(0)}x`} />
                         <SliderField label="Grid contrast" value={gridContrast} min={0} max={1} step={0.01} onChange={(value) => { setGridContrast(value); invalidatePreview() }} format={(value) => value.toFixed(2)} />
                       </PanelBlock>
-                    </TabsContent>
-
-                    <TabsContent value="colors" className="space-y-4">
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
                       <PanelBlock title="Palette preset">
                         <Field label="Preset">
                           <Select value={paletteKey} onValueChange={applyPalettePreset}>
@@ -982,8 +1016,8 @@ function GameOfLifeStudioApp() {
                           <CompactColorField label="Trail" value={trailColor} onChange={(value) => { setTrailColor(value); invalidatePreview() }} />
                         </div>
                       </PanelBlock>
-                    </TabsContent>
-                  </Tabs>
+                    </div>
+                  )
                 ) : (
                   <div className="space-y-4">
                     <PanelBlock title="Capture settings" description="Build the preview timeline from the current scene.">
@@ -1183,7 +1217,6 @@ function GameOfLifeStudioApp() {
               />
             </div>
           </div>
-        </Tabs>
       </div>
     </TooltipProvider>
   )

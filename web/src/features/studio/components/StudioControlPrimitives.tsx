@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -68,9 +69,19 @@ export function CompactColorField({ label, value, onChange }: { label: string; v
   )
 }
 
-export function PanelBlock({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+export function PanelBlock({
+  title,
+  description,
+  children,
+  className,
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="space-y-3 rounded-[24px] border border-border/70 bg-panel/85 p-3.5">
+    <div className={cn("space-y-3 rounded-[24px] border border-border/70 bg-panel/85 p-3.5", className)}>
       <div>
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p> : null}

@@ -23,11 +23,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 import {
   CompactColorField,
   CompactToggle,
   Field,
-  InfoRow,
   PanelBlock,
   SliderField,
 } from "@/features/studio/components/StudioControlPrimitives"
@@ -151,6 +151,7 @@ function GameOfLifeStudioApp() {
   const overlayPattern = useMemo(() => buildTextPattern(textSeed, textScale), [textScale, textSeed])
   const selectedTool = useMemo(() => tools.find((tool) => tool.key === toolKey) ?? tools[0], [toolKey])
   const previewVisible = stageMode === "preview" && previewFrames.length > 0
+  const hasPreview = previewFrames.length > 0
   const previewSnapshot = previewVisible ? previewFrames[previewIndex] : null
   const displayedSnapshot = useMemo(() => {
     if (previewSnapshot) {
@@ -295,7 +296,7 @@ function GameOfLifeStudioApp() {
       })
     }, Math.max(40, Math.round(1000 / gifFps)))
     return () => window.clearTimeout(timeout)
-  }, [gifFps, previewDirection, previewFrames.length])
+  }, [gifFps, previewDirection, previewFrames.length, previewIndex])
 
   useEffect(() => {
     if (!livePlaying) {
@@ -835,6 +836,11 @@ function GameOfLifeStudioApp() {
     if (previewFrames.length === 0) return
     setLivePlaying(false)
     setStageMode("preview")
+    setPreviewIndex((current) => {
+      if (direction > 0 && current >= previewFrames.length - 1) return 0
+      if (direction < 0 && current <= 0) return previewFrames.length - 1
+      return current
+    })
     setPreviewDirection(direction)
   }
 
@@ -937,7 +943,24 @@ function GameOfLifeStudioApp() {
                         Colors
                       </button>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="grid gap-1.5 border-t border-border/70 p-1 pt-0.5">
+                      <Button size="sm" className="h-8 w-full justify-center rounded-lg" onClick={capturePreview}>
+                        <Play className="size-4" />
+                        Capture Preview
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-full justify-center rounded-lg"
+                        onClick={exportGif}
+                        disabled={!hasPreview}
+                      >
+                        <Download className="size-4" />
+                        Export Approved Preview
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 {workflowTab === "scene" ? (
                   sceneTab === "scene" ? (
@@ -1019,33 +1042,25 @@ function GameOfLifeStudioApp() {
                     </div>
                   )
                 ) : (
-                  <div className="space-y-4">
-                    <PanelBlock title="Capture settings" description="Build the preview timeline from the current scene.">
+                  <div className="space-y-3">
+                    <PanelBlock title="Capture settings" className="space-y-2.5 p-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <Field label="Frames"><Input type="number" value={gifFrames} onChange={(event) => setGifFrames(Number(event.target.value) || 1)} /></Field>
-                        <Field label="Step size"><Input type="number" value={gifStepSize} onChange={(event) => setGifStepSize(Number(event.target.value) || 1)} /></Field>
-                        <Field label="Preview FPS"><Input type="number" value={gifFps} onChange={(event) => setGifFps(Number(event.target.value) || 1)} /></Field>
-                        <Field label="Export scale"><Input type="number" value={gifScale} onChange={(event) => setGifScale(Number(event.target.value) || 1)} /></Field>
-                      </div>
-                      <Button size="sm" className="w-full" onClick={capturePreview}><Play className="size-4" />Capture Preview</Button>
-                    </PanelBlock>
-
-                    <PanelBlock title="Timeline" description="Scrub or step through captured frames.">
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>Frame</span>
-                        <span>{previewFrames.length ? `${previewIndex + 1} / ${previewFrames.length}` : "No preview yet"}</span>
-                      </div>
-                      <Slider value={[previewIndex]} min={0} max={Math.max(0, previewFrames.length - 1)} step={1} onValueChange={(value) => setPreviewFrame(value[0] ?? 0)} disabled={!previewFrames.length} />
-                      <div className="grid grid-cols-5 gap-2">
-                        <Button variant="secondary" onClick={() => setPreviewFrame(0)} disabled={!previewFrames.length}><StepBack className="size-4" /></Button>
-                        <Button variant="secondary" onClick={() => setPreviewFrame(previewIndex - 1)} disabled={!previewFrames.length}><ChevronLeft className="size-4" /></Button>
-                        <Button variant="secondary" onClick={() => startPreviewPlayback(1)} disabled={!previewFrames.length}><Play className="size-4" /></Button>
-                        <Button variant="secondary" onClick={() => setPreviewFrame(previewIndex + 1)} disabled={!previewFrames.length}><ChevronRight className="size-4" /></Button>
-                        <Button variant="secondary" onClick={() => setPreviewFrame(previewFrames.length - 1)} disabled={!previewFrames.length}><StepForward className="size-4" /></Button>
+                        <Field label="Frames">
+                          <Input className="h-9 px-3" type="number" value={gifFrames} onChange={(event) => setGifFrames(Number(event.target.value) || 1)} />
+                        </Field>
+                        <Field label="Step size">
+                          <Input className="h-9 px-3" type="number" value={gifStepSize} onChange={(event) => setGifStepSize(Number(event.target.value) || 1)} />
+                        </Field>
+                        <Field label="Preview FPS">
+                          <Input className="h-9 px-3" type="number" value={gifFps} onChange={(event) => setGifFps(Number(event.target.value) || 1)} />
+                        </Field>
+                        <Field label="Export scale">
+                          <Input className="h-9 px-3" type="number" value={gifScale} onChange={(event) => setGifScale(Number(event.target.value) || 1)} />
+                        </Field>
                       </div>
                     </PanelBlock>
 
-                    <PanelBlock title="Export settings" description="Write the current approved preview directly to GIF.">
+                    <PanelBlock title="Export settings">
                       <Field label="GIF filename"><Input value={gifFilename} onChange={(event) => setGifFilename(event.target.value)} /></Field>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-input/35 px-3 py-2.5">
@@ -1067,27 +1082,29 @@ function GameOfLifeStudioApp() {
                         {overlayColorMode === "custom" ? <CompactColorField label="Overlay color" value={overlayColor} onChange={setOverlayColor} /> : null}
                       </div>
                       <SliderField label="Overlay opacity" value={overlayOpacity} min={0} max={1} step={0.01} onChange={setOverlayOpacity} format={(value) => `${Math.round(value * 100)}%`} />
-                    </PanelBlock>
-
-                    <PanelBlock title="Export readiness" description="Quick checks before the final render.">
-                      <div className="space-y-2 text-sm">
-                        <InfoRow label="Frames" value={previewFrames.length || "None"} />
-                        <InfoRow label="Scale" value={`${gifScale}x`} />
-                        <InfoRow label="FPS" value={gifFps} />
-                        <InfoRow label="Overlay" value={overlayEnabled ? "On" : "Off"} />
+                      <div className="rounded-xl border border-border/70 bg-input/35 px-3 py-2.5 text-sm text-muted-foreground">
+                        {hasPreview ? `${previewFrames.length} approved frames ready.` : "Capture a preview to unlock export."}
                       </div>
-                      <Button className="w-full" onClick={exportGif}>
-                        <Download className="size-4" />
-                        Export GIF
-                      </Button>
                     </PanelBlock>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <div className="pointer-events-auto absolute bottom-3 left-[calc(25rem+((100vw-25rem)/2))] z-20 w-[min(44rem,calc(100vw-27rem))] -translate-x-1/2 md:bottom-4">
-              <div className="rounded-[22px] border border-border/70 bg-card/78 p-2 shadow-2xl backdrop-blur-2xl">
+            <div
+              className={cn(
+                "pointer-events-auto absolute bottom-3 left-[calc(25rem+((100vw-25rem)/2))] z-20 -translate-x-1/2 md:bottom-4",
+                workflowTab === "scene"
+                  ? "w-[min(44rem,calc(100vw-27rem))]"
+                  : "w-[min(36rem,calc(100vw-27rem))]",
+              )}
+            >
+              <div
+                className={cn(
+                  "rounded-[22px] border border-border/70 bg-card/78 shadow-2xl backdrop-blur-2xl",
+                  workflowTab === "scene" ? "p-2" : "p-1.5",
+                )}
+              >
                 {workflowTab === "scene" ? (
                   <div className="space-y-1.5">
                     <div className="rounded-xl border border-border/70 bg-input/35 px-2.5 py-2">
@@ -1158,25 +1175,118 @@ function GameOfLifeStudioApp() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Button onClick={capturePreview}><Play className="size-4" />Capture</Button>
-                    <Button variant="secondary" onClick={() => setPreviewFrame(0)} disabled={!previewFrames.length}><StepBack className="size-4" />First</Button>
-                    <Button variant="secondary" onClick={() => setPreviewFrame(previewIndex - 1)} disabled={!previewFrames.length}><ChevronLeft className="size-4" />Prev</Button>
-                    <Button variant="secondary" onClick={() => startPreviewPlayback(1)} disabled={!previewFrames.length}><Play className="size-4" />Play</Button>
-                    <Button variant="secondary" onClick={() => startPreviewPlayback(-1)} disabled={!previewFrames.length}><RotateCcw className="size-4" />Reverse</Button>
-                    <Button variant="secondary" onClick={() => { setStageMode("preview"); setPreviewDirection(0) }} disabled={!previewFrames.length}><Pause className="size-4" />Stop</Button>
-                    <Button variant="secondary" onClick={() => setPreviewFrame(previewIndex + 1)} disabled={!previewFrames.length}><ChevronRight className="size-4" />Next</Button>
-                    <Button variant="secondary" onClick={() => setPreviewFrame(previewFrames.length - 1)} disabled={!previewFrames.length}><StepForward className="size-4" />Last</Button>
-                    <div className="min-w-[220px] flex-1 px-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="size-9 rounded-xl"
+                          onClick={() => setPreviewFrame(0)}
+                          disabled={!hasPreview}
+                          aria-label="Go to first preview frame"
+                        >
+                          <StepBack className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>First frame</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="size-9 rounded-xl"
+                          onClick={() => setPreviewFrame(previewIndex - 1)}
+                          disabled={!hasPreview}
+                          aria-label="Go to previous preview frame"
+                        >
+                          <ChevronLeft className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Previous frame</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="size-9 rounded-xl"
+                          onClick={() => startPreviewPlayback(1)}
+                          disabled={!hasPreview}
+                          aria-label="Play preview forward"
+                        >
+                          <Play className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Play forward</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="size-9 rounded-xl"
+                          onClick={() => startPreviewPlayback(-1)}
+                          disabled={!hasPreview}
+                          aria-label="Play preview in reverse"
+                        >
+                          <RotateCcw className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reverse</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="size-9 rounded-xl"
+                          onClick={() => { setStageMode("preview"); setPreviewDirection(0) }}
+                          disabled={!hasPreview}
+                          aria-label="Stop preview playback"
+                        >
+                          <Pause className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Stop</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="size-9 rounded-xl"
+                          onClick={() => setPreviewFrame(previewIndex + 1)}
+                          disabled={!hasPreview}
+                          aria-label="Go to next preview frame"
+                        >
+                          <ChevronRight className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Next frame</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="size-9 rounded-xl"
+                          onClick={() => setPreviewFrame(previewFrames.length - 1)}
+                          disabled={!hasPreview}
+                          aria-label="Go to last preview frame"
+                        >
+                          <StepForward className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Last frame</TooltipContent>
+                    </Tooltip>
+                    <div className="min-w-[140px] flex-1 px-1">
                       <Slider value={[previewIndex]} min={0} max={Math.max(0, previewFrames.length - 1)} step={1} onValueChange={(value) => setPreviewFrame(value[0] ?? 0)} disabled={!previewFrames.length} />
                     </div>
-                    <div className="rounded-2xl bg-white/5 px-3 py-2 text-sm text-muted-foreground">
-                      {previewFrames.length ? `${previewFrames.length} approved frames ready` : "Capture a preview first"}
+                    <div className="rounded-xl bg-white/5 px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+                      {hasPreview ? `${previewIndex + 1} / ${previewFrames.length}` : "No preview"}
                     </div>
-                    <Button size="lg" onClick={exportGif} disabled={!previewFrames.length}>
-                      <Download className="size-4" />
-                      Export approved preview
-                    </Button>
                   </div>
                 )}
               </div>

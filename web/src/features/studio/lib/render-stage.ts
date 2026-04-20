@@ -23,57 +23,78 @@ function drawGlowingCell(
   radius: number,
   fillColor: string,
   glowColor: string,
-  intensity: number,
+  glowIntensity: number,
+  coreAlpha: number,
   cellSize: number,
   glowRadius: number,
 ) {
-  if (intensity <= 0 || size <= 0) return
+  if (size <= 0) return
 
-  const clampedIntensity = Math.max(0, Math.min(1, intensity))
+  const clampedGlowIntensity = Math.max(0, Math.min(1, glowIntensity))
+  const clampedCoreAlpha = Math.max(0, Math.min(1, coreAlpha))
+  if (clampedGlowIntensity <= 0 && clampedCoreAlpha <= 0) return
+
   const radiusScale = Math.max(0.35, glowRadius)
   const centerX = x + size * 0.5
   const centerY = y + size * 0.5
   const outerGlowRadius = Math.max(size * 0.64, size * 0.44 + cellSize * (0.2 + radiusScale * 0.22))
   const innerGlowRadius = Math.max(size * 0.44, size * 0.28 + cellSize * (0.1 + radiusScale * 0.12))
   const innerInset = Math.max(0.35, cellSize * 0.08)
-  const outerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerGlowRadius)
-  outerGradient.addColorStop(0, hexToRgba(glowColor, clampedIntensity * 0.48))
-  outerGradient.addColorStop(0.18, hexToRgba(glowColor, clampedIntensity * 0.3))
-  outerGradient.addColorStop(0.56, hexToRgba(glowColor, clampedIntensity * 0.08))
-  outerGradient.addColorStop(1, hexToRgba(glowColor, 0))
 
-  ctx.beginPath()
-  ctx.arc(centerX, centerY, outerGlowRadius, 0, Math.PI * 2)
-  ctx.fillStyle = outerGradient
-  ctx.fill()
+  if (clampedGlowIntensity > 0) {
+    const outerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerGlowRadius)
+    outerGradient.addColorStop(0, hexToRgba(glowColor, clampedGlowIntensity * 0.48))
+    outerGradient.addColorStop(0.18, hexToRgba(glowColor, clampedGlowIntensity * 0.3))
+    outerGradient.addColorStop(0.56, hexToRgba(glowColor, clampedGlowIntensity * 0.08))
+    outerGradient.addColorStop(1, hexToRgba(glowColor, 0))
 
-  const innerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, innerGlowRadius)
-  innerGradient.addColorStop(0, hexToRgba(glowColor, clampedIntensity * 0.66))
-  innerGradient.addColorStop(0.34, hexToRgba(glowColor, clampedIntensity * 0.36))
-  innerGradient.addColorStop(1, hexToRgba(glowColor, 0))
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, outerGlowRadius, 0, Math.PI * 2)
+    ctx.roundRect(x, y, size, size, radius)
+    ctx.clip("evenodd")
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, outerGlowRadius, 0, Math.PI * 2)
+    ctx.fillStyle = outerGradient
+    ctx.fill()
+    ctx.restore()
 
-  ctx.beginPath()
-  ctx.arc(centerX, centerY, innerGlowRadius, 0, Math.PI * 2)
-  ctx.fillStyle = innerGradient
-  ctx.fill()
+    const innerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, innerGlowRadius)
+    innerGradient.addColorStop(0, hexToRgba(glowColor, clampedGlowIntensity * 0.66))
+    innerGradient.addColorStop(0.34, hexToRgba(glowColor, clampedGlowIntensity * 0.36))
+    innerGradient.addColorStop(1, hexToRgba(glowColor, 0))
 
-  fillRoundedCell(
-    ctx,
-    x,
-    y,
-    size,
-    radius,
-    hexToRgba(fillColor, 0.22 + clampedIntensity * 0.64),
-  )
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, innerGlowRadius, 0, Math.PI * 2)
+    ctx.roundRect(x, y, size, size, radius)
+    ctx.clip("evenodd")
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, innerGlowRadius, 0, Math.PI * 2)
+    ctx.fillStyle = innerGradient
+    ctx.fill()
+    ctx.restore()
+  }
 
-  fillRoundedCell(
-    ctx,
-    x + innerInset,
-    y + innerInset,
-    Math.max(0.8, size - innerInset * 2),
-    Math.max(1, radius - innerInset * 0.65),
-    hexToRgba(blendColors(fillColor, "#ffffff", 0.12), clampedIntensity * 0.06),
-  )
+  if (clampedCoreAlpha > 0) {
+    fillRoundedCell(
+      ctx,
+      x,
+      y,
+      size,
+      radius,
+      hexToRgba(fillColor, clampedCoreAlpha),
+    )
+
+    fillRoundedCell(
+      ctx,
+      x + innerInset,
+      y + innerInset,
+      Math.max(0.8, size - innerInset * 2),
+      Math.max(1, radius - innerInset * 0.65),
+      hexToRgba(blendColors(fillColor, "#ffffff", 0.12), clampedCoreAlpha * 0.08),
+    )
+  }
 }
 
 export function renderSnapshot2D(
@@ -128,13 +149,37 @@ export function renderSnapshot2D(
       const y = row * cellSize + inset
 
       if (trailMix > 0) {
-        drawGlowingCell(ctx, x, y, chipSize, radius, palette.trail, trailGlowColor, Math.min(0.72, trailMix * 1.18) * bloomScale, cellSize, bloomRadius)
+        drawGlowingCell(
+          ctx,
+          x,
+          y,
+          chipSize,
+          radius,
+          palette.trail,
+          trailGlowColor,
+          Math.min(0.72, trailMix * 1.18) * bloomScale,
+          Math.min(0.62, trailMix * 0.84),
+          cellSize,
+          bloomRadius,
+        )
       }
 
       if (liveMix > 0) {
         const scaledSize = chipSize * pulse
         const offset = (chipSize - scaledSize) / 2
-        drawGlowingCell(ctx, x + offset, y + offset, scaledSize, radius, palette.cell, cellGlowColor, Math.min(1.08, 0.36 + liveMix * 1.12) * bloomScale, cellSize, bloomRadius)
+        drawGlowingCell(
+          ctx,
+          x + offset,
+          y + offset,
+          scaledSize,
+          radius,
+          palette.cell,
+          cellGlowColor,
+          Math.min(1.08, 0.36 + liveMix * 1.12) * bloomScale,
+          Math.min(1, 0.24 + liveMix * 0.9),
+          cellSize,
+          bloomRadius,
+        )
       }
     }
   }
@@ -317,8 +362,10 @@ function getStageRenderer(canvas: HTMLCanvasElement) {
         float innerMask = squircleMask(coreUv, 0.46, 3.6);
         float coreHighlight = 1.0 - smoothstep(-0.24, 0.4, length(coreUv + vec2(-0.18, -0.18)));
         float radial = length(uv);
-        float halo = exp(-4.9 * radial * radial) * (1.0 - core * 0.8);
-        float farHalo = exp(-2.15 * radial * radial) * (1.0 - innerMask * 0.7);
+        float haloMask = 1.0 - smoothstep(0.0, 0.98, core);
+        float farHaloMask = 1.0 - smoothstep(0.0, 0.98, innerMask);
+        float halo = exp(-4.9 * radial * radial) * haloMask;
+        float farHalo = exp(-2.15 * radial * radial) * farHaloMask;
         vec3 color = v_glow.rgb * halo * v_glow.a * 2.28;
         color += v_glow.rgb * farHalo * v_glow.a * 0.42;
         color += v_color.rgb * v_color.a * core;

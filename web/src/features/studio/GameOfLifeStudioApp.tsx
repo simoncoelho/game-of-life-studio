@@ -58,18 +58,19 @@ import {
   createSeededTextGrid,
   scalePattern,
 } from "@/features/studio/lib/pattern-utils"
+import { createSceneSeedGrid } from "@/features/studio/lib/scene-seed-utils"
 import { renderStageWebGL } from "@/features/studio/lib/render-stage"
 import { toolButtonClass } from "@/features/studio/lib/studio-control-styles"
-import type { Snapshot } from "@/features/studio/types"
+import type { ScenePreset, Snapshot } from "@/features/studio/types"
 
 function GameOfLifeStudioApp() {
   const defaultScene = scenes[0]
   const defaultRule = rules.find((rule) => rule.key === defaultScene.ruleKey) ?? rules[0]
   const defaultPalette = palettes.find((palette) => palette.key === defaultScene.paletteKey) ?? palettes[0]
   const initialGrid =
-    defaultScene.key === "blank-canvas"
+    defaultScene.seedMode === "title"
       ? createSeededTextGrid(DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_TEXT_SEED, DEFAULT_TEXT_SCALE)
-      : randomizeGrid(DEFAULT_ROWS, DEFAULT_COLS, defaultScene.density)
+      : createSceneSeedGrid(DEFAULT_ROWS, DEFAULT_COLS, defaultScene.seedMode, defaultScene.density)
 
   const [workflowTab, setWorkflowTab] = useState<"scene" | "review">("scene")
   const [sceneTab, setSceneTab] = useState("scene")
@@ -559,6 +560,20 @@ function GameOfLifeStudioApp() {
     invalidatePreview("Canvas dimensions updated. Capture a new preview for the resized stage.")
   }
 
+  function buildGridForScene(activeScene: ScenePreset | undefined, nextDensity: number) {
+    if (!activeScene) {
+      return randomizeGrid(rows, cols, nextDensity)
+    }
+
+    if (activeScene.seedMode === "title") {
+      const seedText = textSeed.trim() ? textSeed : DEFAULT_TEXT_SEED
+      const seedScale = Math.max(1, Math.round(textScale))
+      return createSeededTextGrid(rows, cols, seedText, seedScale, textOffsetX, textOffsetY)
+    }
+
+    return createSceneSeedGrid(rows, cols, activeScene.seedMode, nextDensity)
+  }
+
   function applyScenePreset(sceneKeyValue: string) {
     const preset = scenes.find((scene) => scene.key === sceneKeyValue)
     if (!preset) return
@@ -579,7 +594,7 @@ function GameOfLifeStudioApp() {
     setCellColor(palette.cell)
     setGridColor(palette.grid)
     setTrailColor(palette.trail)
-    if (preset.key === "blank-canvas") {
+    if (preset.seedMode === "title") {
       setTextSeed(DEFAULT_TEXT_SEED)
       setTextScale(DEFAULT_TEXT_SCALE)
       setTextOffsetX(0)
@@ -599,7 +614,17 @@ function GameOfLifeStudioApp() {
       invalidatePreview("Blank Conway title scene applied.")
       return
     }
-    randomizeScene(preset.density, "Scene preset applied.")
+    const nextGrid = createSceneSeedGrid(rows, cols, preset.seedMode, preset.density)
+    const nextPrevious = createEmptyGrid(rows, cols)
+    gridRef.current = nextGrid
+    previousGridRef.current = nextPrevious
+    generationRef.current = 0
+    liveCellsRef.current = countLive(nextGrid)
+    setGrid(nextGrid)
+    setPreviousGrid(nextPrevious)
+    setGeneration(0)
+    setLiveCells(liveCellsRef.current)
+    invalidatePreview(`${preset.label} scene applied.`)
   }
 
   function applyPalettePreset(paletteValue: string) {
@@ -640,7 +665,8 @@ function GameOfLifeStudioApp() {
 
   function randomizeScene(nextDensity = density, message = "Scene randomized with the current density.") {
     setLivePlaying(false)
-    const nextGrid = randomizeGrid(rows, cols, nextDensity)
+    const activeScene = scenes.find((scene) => scene.key === sceneKey)
+    const nextGrid = buildGridForScene(activeScene, nextDensity)
     const nextPrevious = createEmptyGrid(rows, cols)
     gridRef.current = nextGrid
     previousGridRef.current = nextPrevious

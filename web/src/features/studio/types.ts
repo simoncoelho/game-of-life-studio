@@ -16,10 +16,18 @@ export type Palette = {
   trail: string
 }
 
+export type SceneSeedMode =
+  | "title"
+  | "petri-colonies"
+  | "root-network"
+  | "coral-clusters"
+  | "smiley-burst"
+
 export type ScenePreset = {
   key: string
   label: string
   description: string
+  seedMode: SceneSeedMode
   ruleKey: string
   paletteKey: string
   density: number

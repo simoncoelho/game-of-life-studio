@@ -2,6 +2,8 @@
 
 Game of Life Studio is a React + TypeScript app for composing, previewing, and exporting stylized cellular automata scenes as GIFs.
 
+![Game of Life Studio preview](./game-of-life.gif)
+
 ## Repo Layout
 
 ```text

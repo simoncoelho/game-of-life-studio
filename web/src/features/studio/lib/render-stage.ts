@@ -23,57 +23,78 @@ function drawGlowingCell(
   radius: number,
   fillColor: string,
   glowColor: string,
-  intensity: number,
+  glowIntensity: number,
+  coreAlpha: number,
   cellSize: number,
   glowRadius: number,
 ) {
-  if (intensity <= 0 || size <= 0) return
+  if (size <= 0) return
 
-  const clampedIntensity = Math.max(0, Math.min(1, intensity))
+  const clampedGlowIntensity = Math.max(0, Math.min(1, glowIntensity))
+  const clampedCoreAlpha = Math.max(0, Math.min(1, coreAlpha))
+  if (clampedGlowIntensity <= 0 && clampedCoreAlpha <= 0) return
+
   const radiusScale = Math.max(0.35, glowRadius)
   const centerX = x + size * 0.5
   const centerY = y + size * 0.5
   const outerGlowRadius = Math.max(size * 0.64, size * 0.44 + cellSize * (0.2 + radiusScale * 0.22))
   const innerGlowRadius = Math.max(size * 0.44, size * 0.28 + cellSize * (0.1 + radiusScale * 0.12))
   const innerInset = Math.max(0.35, cellSize * 0.08)
-  const outerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerGlowRadius)
-  outerGradient.addColorStop(0, hexToRgba(glowColor, clampedIntensity * 0.48))
-  outerGradient.addColorStop(0.18, hexToRgba(glowColor, clampedIntensity * 0.3))
-  outerGradient.addColorStop(0.56, hexToRgba(glowColor, clampedIntensity * 0.08))
-  outerGradient.addColorStop(1, hexToRgba(glowColor, 0))
 
-  ctx.beginPath()
-  ctx.arc(centerX, centerY, outerGlowRadius, 0, Math.PI * 2)
-  ctx.fillStyle = outerGradient
-  ctx.fill()
+  if (clampedGlowIntensity > 0) {
+    const outerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerGlowRadius)
+    outerGradient.addColorStop(0, hexToRgba(glowColor, clampedGlowIntensity * 0.48))
+    outerGradient.addColorStop(0.18, hexToRgba(glowColor, clampedGlowIntensity * 0.3))
+    outerGradient.addColorStop(0.56, hexToRgba(glowColor, clampedGlowIntensity * 0.08))
+    outerGradient.addColorStop(1, hexToRgba(glowColor, 0))
 
-  const innerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, innerGlowRadius)
-  innerGradient.addColorStop(0, hexToRgba(glowColor, clampedIntensity * 0.66))
-  innerGradient.addColorStop(0.34, hexToRgba(glowColor, clampedIntensity * 0.36))
-  innerGradient.addColorStop(1, hexToRgba(glowColor, 0))
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, outerGlowRadius, 0, Math.PI * 2)
+    ctx.roundRect(x, y, size, size, radius)
+    ctx.clip("evenodd")
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, outerGlowRadius, 0, Math.PI * 2)
+    ctx.fillStyle = outerGradient
+    ctx.fill()
+    ctx.restore()
 
-  ctx.beginPath()
-  ctx.arc(centerX, centerY, innerGlowRadius, 0, Math.PI * 2)
-  ctx.fillStyle = innerGradient
-  ctx.fill()
+    const innerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, innerGlowRadius)
+    innerGradient.addColorStop(0, hexToRgba(glowColor, clampedGlowIntensity * 0.66))
+    innerGradient.addColorStop(0.34, hexToRgba(glowColor, clampedGlowIntensity * 0.36))
+    innerGradient.addColorStop(1, hexToRgba(glowColor, 0))
 
-  fillRoundedCell(
-    ctx,
-    x,
-    y,
-    size,
-    radius,
-    hexToRgba(fillColor, 0.22 + clampedIntensity * 0.64),
-  )
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, innerGlowRadius, 0, Math.PI * 2)
+    ctx.roundRect(x, y, size, size, radius)
+    ctx.clip("evenodd")
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, innerGlowRadius, 0, Math.PI * 2)
+    ctx.fillStyle = innerGradient
+    ctx.fill()
+    ctx.restore()
+  }
 
-  fillRoundedCell(
-    ctx,
-    x + innerInset,
-    y + innerInset,
-    Math.max(0.8, size - innerInset * 2),
-    Math.max(1, radius - innerInset * 0.65),
-    hexToRgba(blendColors(fillColor, "#ffffff", 0.12), clampedIntensity * 0.06),
-  )
+  if (clampedCoreAlpha > 0) {
+    fillRoundedCell(
+      ctx,
+      x,
+      y,
+      size,
+      radius,
+      hexToRgba(fillColor, clampedCoreAlpha),
+    )
+
+    fillRoundedCell(
+      ctx,
+      x + innerInset,
+      y + innerInset,
+      Math.max(0.8, size - innerInset * 2),
+      Math.max(1, radius - innerInset * 0.65),
+      hexToRgba(blendColors(fillColor, "#ffffff", 0.12), clampedCoreAlpha * 0.08),
+    )
+  }
 }
 
 export function renderSnapshot2D(
@@ -128,13 +149,37 @@ export function renderSnapshot2D(
       const y = row * cellSize + inset
 
       if (trailMix > 0) {
-        drawGlowingCell(ctx, x, y, chipSize, radius, palette.trail, trailGlowColor, Math.min(0.72, trailMix * 1.18) * bloomScale, cellSize, bloomRadius)
+        drawGlowingCell(
+          ctx,
+          x,
+          y,
+          chipSize,
+          radius,
+          palette.trail,
+          trailGlowColor,
+          Math.min(0.72, trailMix * 1.18) * bloomScale,
+          Math.min(0.62, trailMix * 0.84),
+          cellSize,
+          bloomRadius,
+        )
       }
 
       if (liveMix > 0) {
         const scaledSize = chipSize * pulse
         const offset = (chipSize - scaledSize) / 2
-        drawGlowingCell(ctx, x + offset, y + offset, scaledSize, radius, palette.cell, cellGlowColor, Math.min(1.08, 0.36 + liveMix * 1.12) * bloomScale, cellSize, bloomRadius)
+        drawGlowingCell(
+          ctx,
+          x + offset,
+          y + offset,
+          scaledSize,
+          radius,
+          palette.cell,
+          cellGlowColor,
+          Math.min(1.08, 0.36 + liveMix * 1.12) * bloomScale,
+          Math.min(1, 0.24 + liveMix * 0.9),
+          cellSize,
+          bloomRadius,
+        )
       }
     }
   }
@@ -181,7 +226,8 @@ export function renderSnapshot2D(
 type StageWebGLRenderer = {
   gl: WebGLRenderingContext
   backgroundProgram: WebGLProgram
-  pointsProgram: WebGLProgram
+  glowProgram: WebGLProgram
+  coreProgram: WebGLProgram
   quadBuffer: WebGLBuffer
   pointBuffer: WebGLBuffer
   backgroundPositionLocation: number
@@ -190,12 +236,16 @@ type StageWebGLRenderer = {
   backgroundGridColorLocation: WebGLUniformLocation
   backgroundCellSizeLocation: WebGLUniformLocation
   backgroundGridStrengthLocation: WebGLUniformLocation
-  pointPositionLocation: number
-  pointSizeLocation: number
-  pointColorLocation: number
-  pointGlowLocation: number
-  pointCoreScaleLocation: WebGLUniformLocation
-  pointResolutionLocation: WebGLUniformLocation
+  glowPositionLocation: number
+  glowSizeLocation: number
+  glowColorLocation: number
+  glowAuxLocation: number
+  glowResolutionLocation: WebGLUniformLocation
+  corePositionLocation: number
+  coreSizeLocation: number
+  coreColorLocation: number
+  coreAuxLocation: number
+  coreResolutionLocation: WebGLUniformLocation
 }
 
 const stageRendererCache = new WeakMap<HTMLCanvasElement, StageWebGLRenderer>()
@@ -230,6 +280,25 @@ function createProgram(gl: WebGLRenderingContext, vertexSource: string, fragment
   }
   return program
 }
+
+const pointVertexShaderSource = `
+  attribute vec2 a_center;
+  attribute float a_size;
+  attribute vec4 a_color;
+  attribute float a_aux;
+  uniform vec2 u_resolution;
+  varying vec4 v_color;
+  varying float v_aux;
+  varying float v_size;
+  void main() {
+    vec2 clip = (a_center / u_resolution) * 2.0 - 1.0;
+    gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
+    gl_PointSize = a_size;
+    v_color = a_color;
+    v_aux = a_aux;
+    v_size = a_size;
+  }
+`
 
 function getStageRenderer(canvas: HTMLCanvasElement) {
   const cached = stageRendererCache.get(canvas)
@@ -277,54 +346,60 @@ function getStageRenderer(canvas: HTMLCanvasElement) {
     `,
   )
 
-  const pointsProgram = createProgram(
+  const glowProgram = createProgram(
     gl,
-    `
-      attribute vec2 a_center;
-      attribute float a_size;
-      attribute vec4 a_color;
-      attribute vec4 a_glow;
-      uniform vec2 u_resolution;
-      uniform float u_core_scale;
-      varying vec4 v_color;
-      varying vec4 v_glow;
-      varying float v_core_scale;
-      void main() {
-        vec2 clip = (a_center / u_resolution) * 2.0 - 1.0;
-        gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
-        gl_PointSize = a_size;
-        v_color = a_color;
-        v_glow = a_glow;
-        v_core_scale = u_core_scale;
-      }
-    `,
+    pointVertexShaderSource,
     `
       precision mediump float;
       varying vec4 v_color;
-      varying vec4 v_glow;
-      varying float v_core_scale;
+      varying float v_aux;
+      varying float v_size;
 
-      float squircleMask(vec2 p, float radius, float power) {
+      float squircleMask(vec2 p, float radius, float power, float edgeSoftness) {
         vec2 normalized = abs(p) / vec2(radius);
         float shape = pow(pow(normalized.x, power) + pow(normalized.y, power), 1.0 / power);
-        return 1.0 - smoothstep(0.82, 1.0, shape);
+        return 1.0 - smoothstep(1.0 - edgeSoftness, 1.0, shape);
       }
 
       void main() {
         vec2 uv = gl_PointCoord * 2.0 - 1.0;
-        vec2 coreUv = uv * v_core_scale;
-        float core = squircleMask(coreUv, 0.62, 3.6);
-        float innerMask = squircleMask(coreUv, 0.46, 3.6);
-        float coreHighlight = 1.0 - smoothstep(-0.24, 0.4, length(coreUv + vec2(-0.18, -0.18)));
+        float edgeSoftness = clamp(2.4 / max(v_size, 1.0), 0.02, 0.24);
+        float coreMask = squircleMask(uv / max(v_aux, 0.0001), 0.62, 3.6, edgeSoftness * 1.35);
+        float innerMask = squircleMask(uv / max(v_aux, 0.0001), 0.46, 3.6, edgeSoftness * 1.35);
         float radial = length(uv);
-        float halo = exp(-4.9 * radial * radial) * (1.0 - core * 0.8);
-        float farHalo = exp(-2.15 * radial * radial) * (1.0 - innerMask * 0.7);
-        vec3 color = v_glow.rgb * halo * v_glow.a * 2.28;
-        color += v_glow.rgb * farHalo * v_glow.a * 0.42;
-        color += v_color.rgb * v_color.a * core;
-        color += mix(v_color.rgb, vec3(1.0), 0.1) * 0.05 * coreHighlight * v_color.a * innerMask;
-        float alpha = max(core * v_color.a, max(halo * v_glow.a * 1.08, farHalo * v_glow.a * 0.24));
+        float halo = exp(-4.7 * radial * radial) * (1.0 - coreMask);
+        float farHalo = exp(-2.0 * radial * radial) * (1.0 - innerMask);
+        float alpha = clamp(halo * v_color.a * 1.35 + farHalo * v_color.a * 0.35, 0.0, 1.0);
         if (alpha < 0.01) discard;
+        gl_FragColor = vec4(v_color.rgb, alpha);
+      }
+    `,
+  )
+
+  const coreProgram = createProgram(
+    gl,
+    pointVertexShaderSource,
+    `
+      precision mediump float;
+      varying vec4 v_color;
+      varying float v_size;
+
+      float squircleMask(vec2 p, float radius, float power, float edgeSoftness) {
+        vec2 normalized = abs(p) / vec2(radius);
+        float shape = pow(pow(normalized.x, power) + pow(normalized.y, power), 1.0 / power);
+        return 1.0 - smoothstep(1.0 - edgeSoftness, 1.0, shape);
+      }
+
+      void main() {
+        vec2 uv = gl_PointCoord * 2.0 - 1.0;
+        float edgeSoftness = clamp(1.3 / max(v_size, 1.0), 0.008, 0.16);
+        float core = squircleMask(uv, 0.62, 3.6, edgeSoftness);
+        float innerMask = squircleMask(uv, 0.46, 3.6, edgeSoftness * 1.1);
+        float highlight = 1.0 - smoothstep(-0.24, 0.4, length(uv + vec2(-0.18, -0.18)));
+        float alpha = core * v_color.a;
+        if (alpha < 0.01) discard;
+        vec3 color = v_color.rgb;
+        color += mix(v_color.rgb, vec3(1.0), 0.03) * 0.015 * highlight * innerMask;
         gl_FragColor = vec4(color, alpha);
       }
     `,
@@ -344,7 +419,8 @@ function getStageRenderer(canvas: HTMLCanvasElement) {
   const renderer: StageWebGLRenderer = {
     gl,
     backgroundProgram,
-    pointsProgram,
+    glowProgram,
+    coreProgram,
     quadBuffer,
     pointBuffer,
     backgroundPositionLocation: gl.getAttribLocation(backgroundProgram, "a_position"),
@@ -353,16 +429,42 @@ function getStageRenderer(canvas: HTMLCanvasElement) {
     backgroundGridColorLocation: gl.getUniformLocation(backgroundProgram, "u_grid")!,
     backgroundCellSizeLocation: gl.getUniformLocation(backgroundProgram, "u_cell_size")!,
     backgroundGridStrengthLocation: gl.getUniformLocation(backgroundProgram, "u_grid_strength")!,
-    pointPositionLocation: gl.getAttribLocation(pointsProgram, "a_center"),
-    pointSizeLocation: gl.getAttribLocation(pointsProgram, "a_size"),
-    pointColorLocation: gl.getAttribLocation(pointsProgram, "a_color"),
-    pointGlowLocation: gl.getAttribLocation(pointsProgram, "a_glow"),
-    pointCoreScaleLocation: gl.getUniformLocation(pointsProgram, "u_core_scale")!,
-    pointResolutionLocation: gl.getUniformLocation(pointsProgram, "u_resolution")!,
+    glowPositionLocation: gl.getAttribLocation(glowProgram, "a_center"),
+    glowSizeLocation: gl.getAttribLocation(glowProgram, "a_size"),
+    glowColorLocation: gl.getAttribLocation(glowProgram, "a_color"),
+    glowAuxLocation: gl.getAttribLocation(glowProgram, "a_aux"),
+    glowResolutionLocation: gl.getUniformLocation(glowProgram, "u_resolution")!,
+    corePositionLocation: gl.getAttribLocation(coreProgram, "a_center"),
+    coreSizeLocation: gl.getAttribLocation(coreProgram, "a_size"),
+    coreColorLocation: gl.getAttribLocation(coreProgram, "a_color"),
+    coreAuxLocation: gl.getAttribLocation(coreProgram, "a_aux"),
+    coreResolutionLocation: gl.getUniformLocation(coreProgram, "u_resolution")!,
   }
 
   stageRendererCache.set(canvas, renderer)
   return renderer
+}
+
+function bindPointAttributes(
+  gl: WebGLRenderingContext,
+  positionLocation: number,
+  sizeLocation: number,
+  colorLocation: number,
+  auxLocation: number,
+) {
+  const stride = 8 * Float32Array.BYTES_PER_ELEMENT
+
+  gl.enableVertexAttribArray(positionLocation)
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, stride, 0)
+
+  gl.enableVertexAttribArray(sizeLocation)
+  gl.vertexAttribPointer(sizeLocation, 1, gl.FLOAT, false, stride, 2 * Float32Array.BYTES_PER_ELEMENT)
+
+  gl.enableVertexAttribArray(colorLocation)
+  gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT)
+
+  gl.enableVertexAttribArray(auxLocation)
+  gl.vertexAttribPointer(auxLocation, 1, gl.FLOAT, false, stride, 7 * Float32Array.BYTES_PER_ELEMENT)
 }
 
 export function renderStageWebGL(
@@ -432,15 +534,14 @@ export function renderStageWebGL(
   const cellGlowRgb = hexToRgb(boostGlowColor(palette.cell))
   const trailGlowRgb = hexToRgb(boostGlowColor(blendColors(palette.cell, palette.trail, 0.82)))
   const overlayRgb = overlay ? hexToRgb(blendColors(overlay.color, palette.background, overlay.opacity)) : cellRgb
-  const basePointSize = Math.max(1.5, cellSize * renderScale * 1.04)
+  const basePointSize = Math.max(1.5, cellSize * renderScale * 0.84)
   const haloPadding = Math.max(0.34, bloomRadius) * Math.max(1.02, cellSize * renderScale * 0.16)
-  const pointSize = basePointSize + haloPadding * 2
-  const coreScale = pointSize / basePointSize
   const bloomScale = Math.max(0, bloomAmount)
   const liveGlowAlphaBase = (0.66 + 0.24 * Math.min(1, cellSize / 14)) * bloomScale
   const trailGlowAlphaBase = (0.36 + 0.14 * Math.min(1, cellSize / 14)) * bloomScale
   const pulse = 0.9 + transitionProgress * 0.1
-  const data: number[] = []
+  const glowData: number[] = []
+  const coreData: number[] = []
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
@@ -452,34 +553,52 @@ export function renderStageWebGL(
       const cy = (row + 0.5) * cellSize * renderScale
 
       if (trailMix > 0) {
-        data.push(
+        const coreSize = basePointSize
+        const glowSize = coreSize + haloPadding * 2
+        glowData.push(
           cx,
           cy,
-          pointSize,
-          trailRgb.r / 255,
-          trailRgb.g / 255,
-          trailRgb.b / 255,
-          Math.min(0.62, trailMix * 0.84),
+          glowSize,
           trailGlowRgb.r / 255,
           trailGlowRgb.g / 255,
           trailGlowRgb.b / 255,
           trailGlowAlphaBase * trailMix,
+          coreSize / glowSize,
+        )
+        coreData.push(
+          cx,
+          cy,
+          coreSize,
+          trailRgb.r / 255,
+          trailRgb.g / 255,
+          trailRgb.b / 255,
+          Math.min(0.62, trailMix * 0.84),
+          0,
         )
       }
 
       if (liveMix > 0) {
-        data.push(
+        const coreSize = basePointSize * pulse
+        const glowSize = coreSize + haloPadding * 2
+        glowData.push(
           cx,
           cy,
-          pointSize * pulse,
-          cellRgb.r / 255,
-          cellRgb.g / 255,
-          cellRgb.b / 255,
-          Math.min(1, 0.24 + liveMix * 0.9),
+          glowSize,
           cellGlowRgb.r / 255,
           cellGlowRgb.g / 255,
           cellGlowRgb.b / 255,
           liveGlowAlphaBase * Math.min(1, liveMix),
+          coreSize / glowSize,
+        )
+        coreData.push(
+          cx,
+          cy,
+          coreSize,
+          cellRgb.r / 255,
+          cellRgb.g / 255,
+          cellRgb.b / 255,
+          Math.min(1, 0.24 + liveMix * 0.9),
+          0,
         )
       }
     }
@@ -494,41 +613,47 @@ export function renderStageWebGL(
         const gridRow = startRow + rowIndex
         const gridCol = startCol + colIndex
         if (gridRow >= rows || gridCol >= cols) return
-        data.push(
+        coreData.push(
           (gridCol + 0.5) * cellSize * renderScale,
           (gridRow + 0.5) * cellSize * renderScale,
-          pointSize,
+          basePointSize,
           overlayRgb.r / 255,
           overlayRgb.g / 255,
           overlayRgb.b / 255,
           Math.min(1, overlay.opacity),
-          overlayRgb.r / 255,
-          overlayRgb.g / 255,
-          overlayRgb.b / 255,
-          0.18 * Math.min(1, overlay.opacity),
+          0,
         )
       })
     })
   }
 
-  gl.useProgram(renderer.pointsProgram)
   gl.bindBuffer(gl.ARRAY_BUFFER, renderer.pointBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW)
-  const stride = 11 * Float32Array.BYTES_PER_ELEMENT
 
-  gl.enableVertexAttribArray(renderer.pointPositionLocation)
-  gl.vertexAttribPointer(renderer.pointPositionLocation, 2, gl.FLOAT, false, stride, 0)
+  if (glowData.length > 0) {
+    gl.useProgram(renderer.glowProgram)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(glowData), gl.DYNAMIC_DRAW)
+    bindPointAttributes(
+      gl,
+      renderer.glowPositionLocation,
+      renderer.glowSizeLocation,
+      renderer.glowColorLocation,
+      renderer.glowAuxLocation,
+    )
+    gl.uniform2f(renderer.glowResolutionLocation, deviceWidth, deviceHeight)
+    gl.drawArrays(gl.POINTS, 0, glowData.length / 8)
+  }
 
-  gl.enableVertexAttribArray(renderer.pointSizeLocation)
-  gl.vertexAttribPointer(renderer.pointSizeLocation, 1, gl.FLOAT, false, stride, 2 * Float32Array.BYTES_PER_ELEMENT)
-
-  gl.enableVertexAttribArray(renderer.pointColorLocation)
-  gl.vertexAttribPointer(renderer.pointColorLocation, 4, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT)
-
-  gl.enableVertexAttribArray(renderer.pointGlowLocation)
-  gl.vertexAttribPointer(renderer.pointGlowLocation, 4, gl.FLOAT, false, stride, 7 * Float32Array.BYTES_PER_ELEMENT)
-
-  gl.uniform2f(renderer.pointResolutionLocation, deviceWidth, deviceHeight)
-  gl.uniform1f(renderer.pointCoreScaleLocation, coreScale)
-  gl.drawArrays(gl.POINTS, 0, data.length / 11)
+  if (coreData.length > 0) {
+    gl.useProgram(renderer.coreProgram)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coreData), gl.DYNAMIC_DRAW)
+    bindPointAttributes(
+      gl,
+      renderer.corePositionLocation,
+      renderer.coreSizeLocation,
+      renderer.coreColorLocation,
+      renderer.coreAuxLocation,
+    )
+    gl.uniform2f(renderer.coreResolutionLocation, deviceWidth, deviceHeight)
+    gl.drawArrays(gl.POINTS, 0, coreData.length / 8)
+  }
 }

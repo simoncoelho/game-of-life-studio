@@ -1,4 +1,4 @@
-import { blendColors, hexToRgb, hexToRgba } from "./color-utils"
+import { blendColors, boostGlowColor, hexToRgb, hexToRgba } from "./color-utils"
 import type { OverlayRenderConfig, Palette, Snapshot } from "../types"
 
 function fillRoundedCell(
@@ -21,7 +21,8 @@ function drawGlowingCell(
   y: number,
   size: number,
   radius: number,
-  color: string,
+  fillColor: string,
+  glowColor: string,
   intensity: number,
   cellSize: number,
   glowRadius: number,
@@ -30,27 +31,31 @@ function drawGlowingCell(
 
   const clampedIntensity = Math.max(0, Math.min(1, intensity))
   const radiusScale = Math.max(0.35, glowRadius)
-  const outerExpand = Math.max(0.8, cellSize * (0.18 + radiusScale * 0.26))
-  const midExpand = Math.max(0.45, cellSize * (0.1 + radiusScale * 0.14))
+  const centerX = x + size * 0.5
+  const centerY = y + size * 0.5
+  const outerGlowRadius = Math.max(size * 0.64, size * 0.44 + cellSize * (0.2 + radiusScale * 0.22))
+  const innerGlowRadius = Math.max(size * 0.44, size * 0.28 + cellSize * (0.1 + radiusScale * 0.12))
   const innerInset = Math.max(0.35, cellSize * 0.08)
+  const outerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerGlowRadius)
+  outerGradient.addColorStop(0, hexToRgba(glowColor, clampedIntensity * 0.48))
+  outerGradient.addColorStop(0.18, hexToRgba(glowColor, clampedIntensity * 0.3))
+  outerGradient.addColorStop(0.56, hexToRgba(glowColor, clampedIntensity * 0.08))
+  outerGradient.addColorStop(1, hexToRgba(glowColor, 0))
 
-  fillRoundedCell(
-    ctx,
-    x - outerExpand,
-    y - outerExpand,
-    size + outerExpand * 2,
-    radius + outerExpand,
-    hexToRgba(color, clampedIntensity * 0.12),
-  )
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, outerGlowRadius, 0, Math.PI * 2)
+  ctx.fillStyle = outerGradient
+  ctx.fill()
 
-  fillRoundedCell(
-    ctx,
-    x - midExpand,
-    y - midExpand,
-    size + midExpand * 2,
-    radius + midExpand,
-    hexToRgba(color, clampedIntensity * 0.22),
-  )
+  const innerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, innerGlowRadius)
+  innerGradient.addColorStop(0, hexToRgba(glowColor, clampedIntensity * 0.66))
+  innerGradient.addColorStop(0.34, hexToRgba(glowColor, clampedIntensity * 0.36))
+  innerGradient.addColorStop(1, hexToRgba(glowColor, 0))
+
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, innerGlowRadius, 0, Math.PI * 2)
+  ctx.fillStyle = innerGradient
+  ctx.fill()
 
   fillRoundedCell(
     ctx,
@@ -58,7 +63,7 @@ function drawGlowingCell(
     y,
     size,
     radius,
-    hexToRgba(color, 0.18 + clampedIntensity * 0.58),
+    hexToRgba(fillColor, 0.22 + clampedIntensity * 0.64),
   )
 
   fillRoundedCell(
@@ -67,7 +72,7 @@ function drawGlowingCell(
     y + innerInset,
     Math.max(0.8, size - innerInset * 2),
     Math.max(1, radius - innerInset * 0.65),
-    hexToRgba("#ffffff", clampedIntensity * 0.16),
+    hexToRgba(blendColors(fillColor, "#ffffff", 0.12), clampedIntensity * 0.06),
   )
 }
 
@@ -103,6 +108,8 @@ export function renderSnapshot2D(
 
   const gridColor = blendColors(palette.grid, palette.background, gridContrast)
   const overlayColor = overlay ? blendColors(overlay.color, palette.background, overlay.opacity) : palette.cell
+  const cellGlowColor = boostGlowColor(palette.cell)
+  const trailGlowColor = boostGlowColor(blendColors(palette.cell, palette.trail, 0.82))
   const inset = Math.max(0.45, cellSize * 0.08)
   const chipSize = Math.max(1, cellSize - inset * 2)
   const radius = Math.min(chipSize * 0.4, Math.max(1.6, cellSize * 0.3))
@@ -121,13 +128,13 @@ export function renderSnapshot2D(
       const y = row * cellSize + inset
 
       if (trailMix > 0) {
-        drawGlowingCell(ctx, x, y, chipSize, radius, palette.trail, Math.min(0.45, trailMix * 0.85) * bloomScale, cellSize, bloomRadius)
+        drawGlowingCell(ctx, x, y, chipSize, radius, palette.trail, trailGlowColor, Math.min(0.72, trailMix * 1.18) * bloomScale, cellSize, bloomRadius)
       }
 
       if (liveMix > 0) {
         const scaledSize = chipSize * pulse
         const offset = (chipSize - scaledSize) / 2
-        drawGlowingCell(ctx, x + offset, y + offset, scaledSize, radius, palette.cell, Math.min(1, 0.1 + liveMix * 0.96) * bloomScale, cellSize, bloomRadius)
+        drawGlowingCell(ctx, x + offset, y + offset, scaledSize, radius, palette.cell, cellGlowColor, Math.min(1.08, 0.36 + liveMix * 1.12) * bloomScale, cellSize, bloomRadius)
       }
     }
   }
@@ -297,26 +304,26 @@ function getStageRenderer(canvas: HTMLCanvasElement) {
       varying vec4 v_glow;
       varying float v_core_scale;
 
-      float roundedBoxSdf(vec2 p, vec2 b, float r) {
-        vec2 q = abs(p) - b + vec2(r);
-        return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+      float squircleMask(vec2 p, float radius, float power) {
+        vec2 normalized = abs(p) / vec2(radius);
+        float shape = pow(pow(normalized.x, power) + pow(normalized.y, power), 1.0 / power);
+        return 1.0 - smoothstep(0.82, 1.0, shape);
       }
 
       void main() {
         vec2 uv = gl_PointCoord * 2.0 - 1.0;
         vec2 coreUv = uv * v_core_scale;
-        float dist = roundedBoxSdf(coreUv, vec2(0.58), 0.28);
-        float core = 1.0 - smoothstep(0.0, 0.035, dist);
+        float core = squircleMask(coreUv, 0.62, 3.6);
+        float innerMask = squircleMask(coreUv, 0.46, 3.6);
         float coreHighlight = 1.0 - smoothstep(-0.24, 0.4, length(coreUv + vec2(-0.18, -0.18)));
         float radial = length(uv);
-        float outsideMask = smoothstep(0.02, 0.22, dist);
-        float halo = exp(-2.1 * radial * radial) * outsideMask;
-        float farHalo = exp(-0.85 * radial * radial) * outsideMask;
-        vec3 color = v_glow.rgb * halo * v_glow.a * 1.55;
-        color += v_glow.rgb * farHalo * v_glow.a * 0.5;
+        float halo = exp(-4.9 * radial * radial) * (1.0 - core * 0.8);
+        float farHalo = exp(-2.15 * radial * radial) * (1.0 - innerMask * 0.7);
+        vec3 color = v_glow.rgb * halo * v_glow.a * 2.28;
+        color += v_glow.rgb * farHalo * v_glow.a * 0.42;
         color += v_color.rgb * v_color.a * core;
-        color += vec3(1.0) * 0.06 * coreHighlight * v_color.a * core;
-        float alpha = max(core * v_color.a, max(halo * v_glow.a * 0.86, farHalo * v_glow.a * 0.36));
+        color += mix(v_color.rgb, vec3(1.0), 0.1) * 0.05 * coreHighlight * v_color.a * innerMask;
+        float alpha = max(core * v_color.a, max(halo * v_glow.a * 1.08, farHalo * v_glow.a * 0.24));
         if (alpha < 0.01) discard;
         gl_FragColor = vec4(color, alpha);
       }
@@ -422,14 +429,16 @@ export function renderStageWebGL(
 
   const cellRgb = hexToRgb(palette.cell)
   const trailRgb = hexToRgb(palette.trail)
+  const cellGlowRgb = hexToRgb(boostGlowColor(palette.cell))
+  const trailGlowRgb = hexToRgb(boostGlowColor(blendColors(palette.cell, palette.trail, 0.82)))
   const overlayRgb = overlay ? hexToRgb(blendColors(overlay.color, palette.background, overlay.opacity)) : cellRgb
   const basePointSize = Math.max(1.5, cellSize * renderScale * 1.04)
-  const haloPadding = Math.max(0.4, bloomRadius) * Math.max(1.35, cellSize * renderScale * 0.26)
+  const haloPadding = Math.max(0.34, bloomRadius) * Math.max(1.02, cellSize * renderScale * 0.16)
   const pointSize = basePointSize + haloPadding * 2
   const coreScale = pointSize / basePointSize
   const bloomScale = Math.max(0, bloomAmount)
-  const liveGlowAlphaBase = (0.34 + 0.24 * Math.min(1, cellSize / 14)) * bloomScale
-  const trailGlowAlphaBase = (0.18 + 0.12 * Math.min(1, cellSize / 14)) * bloomScale
+  const liveGlowAlphaBase = (0.66 + 0.24 * Math.min(1, cellSize / 14)) * bloomScale
+  const trailGlowAlphaBase = (0.36 + 0.14 * Math.min(1, cellSize / 14)) * bloomScale
   const pulse = 0.9 + transitionProgress * 0.1
   const data: number[] = []
 
@@ -450,10 +459,10 @@ export function renderStageWebGL(
           trailRgb.r / 255,
           trailRgb.g / 255,
           trailRgb.b / 255,
-          Math.min(0.55, trailMix * 0.72),
-          trailRgb.r / 255,
-          trailRgb.g / 255,
-          trailRgb.b / 255,
+          Math.min(0.62, trailMix * 0.84),
+          trailGlowRgb.r / 255,
+          trailGlowRgb.g / 255,
+          trailGlowRgb.b / 255,
           trailGlowAlphaBase * trailMix,
         )
       }
@@ -466,10 +475,10 @@ export function renderStageWebGL(
           cellRgb.r / 255,
           cellRgb.g / 255,
           cellRgb.b / 255,
-          Math.min(1, 0.22 + liveMix * 0.92),
-          cellRgb.r / 255,
-          cellRgb.g / 255,
-          cellRgb.b / 255,
+          Math.min(1, 0.24 + liveMix * 0.9),
+          cellGlowRgb.r / 255,
+          cellGlowRgb.g / 255,
+          cellGlowRgb.b / 255,
           liveGlowAlphaBase * Math.min(1, liveMix),
         )
       }

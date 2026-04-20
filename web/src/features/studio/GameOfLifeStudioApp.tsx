@@ -1301,9 +1301,9 @@ function GameOfLifeStudioApp() {
                 ref={canvasRef}
                 className="absolute left-0 top-0 border border-white/8 shadow-[0_32px_80px_rgba(0,0,0,0.45)]"
                 style={{
-                  width: naturalCanvasWidth,
-                  height: naturalCanvasHeight,
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  width: naturalCanvasWidth * zoom,
+                  height: naturalCanvasHeight * zoom,
+                  transform: `translate(${pan.x}px, ${pan.y}px)`,
                   transformOrigin: "top left",
                   cursor: stageCursor,
                 }}
